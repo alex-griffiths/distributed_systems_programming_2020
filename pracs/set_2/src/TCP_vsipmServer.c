@@ -182,7 +182,7 @@ int main()
                          * it wasn't closed the parent would eventually
                          * run out of descriptors.
                          */
-                        close(rssd);
+                        close(essd);
                         fprintf(stderr, "M: process %d will service this.\n", pid);
                 }
         }
