@@ -243,7 +243,7 @@ void manage_connection(int in, int out)
                                         fprintf(stderr, "\n%sReceive buffer size exceeded!\n",
                                                         prefix);
                                         close(in);
-                                        exit(EXIT_SUCCESS);
+                                        exit(EXIT_FAILURE);
                                 }
 
                                 fprintf(stderr, "%sHave read in:\n", prefix);
