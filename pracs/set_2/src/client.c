@@ -78,9 +78,6 @@ int main(int argc, char *argv[])
         /* Begin connection loop */
         while(1)
         {
-                /* Clear server_res buffer */
-                memset(server_res, '\0', BUF_LEN * sizeof(char));
-
                 in_count = read(child_sd, server_res, BUF_LEN);
 
                 if (in_count < 0) 
@@ -88,16 +85,21 @@ int main(int argc, char *argv[])
                         perror("While calling read()");
                         exit(EXIT_FAILURE);
                 }
-                else if (in_count == 0) break;
-
-                /* Check for connection closed response */
-                if (server_res == "CONN_CLOSED") break;
+                else if (in_count == 0) 
+                {
+                        fprintf(stderr, "Connection lost\n");
+                        break;
+                }
 
                 fprintf(stderr, "%s\n", server_res);
 
                 /* Capture user input and send it to the server until eod found */
                 while(1)
                 {
+                        /* Check for connection loss */
+                        in_count = read(child_sd, server_res, BUF_LEN);
+                        if (in_count == 0) break;
+
                         fgets(client_str, BUF_LEN, stdin);
 
                         client_str_len = strlen(client_str);
@@ -112,6 +114,10 @@ int main(int argc, char *argv[])
                         /* Check for eod character or for exit char */
                         if (client_str[client_str_len - 2] == '&') break;
                 }
+
+
+                /* Check for exit char */
+                if (client_str[0] == 'X') break;
         }
 
         fprintf(stderr, "Exiting...\n");

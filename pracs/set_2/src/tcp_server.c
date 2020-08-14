@@ -261,9 +261,7 @@ void manage_connection(int in, int out)
         }
 
         fprintf(stderr, "\n%s Client has exited the session. Closing down\n", prefix);
-        sprintf(out_buf, "CONN_CLOSED");
-        memset(in_data, '\0', BUF_LEN * sizeof(char));
-        write(out, out_buf, strlen(out_buf));
+
         close(in);
 }
 
