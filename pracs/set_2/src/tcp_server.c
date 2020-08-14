@@ -1,7 +1,8 @@
 /*
+ * Alex Griffiths - 18001525
+ *
  * A concurrent connection oriented server.
  *
- * Use telnet as a client.
  */
 
 #include <stdlib.h>
@@ -164,7 +165,7 @@ int main()
 
 void manage_connection(int in, int out)
 {
-        int read_count, buf_count;
+        int read_count, buf_count, out_count;
         char out_buf[BUF_LEN],
              in_data[BUF_LEN],
              hostname[40];
@@ -228,6 +229,7 @@ void manage_connection(int in, int out)
                                 buf_count = buf_count + read_count;
 
                                 if (in_data[buf_count - 2] == eod) break;
+                                if (in_data[buf_count - 3] == eod) break;
                         }
                         else if (read_count == 0)
                         {
@@ -243,8 +245,6 @@ void manage_connection(int in, int out)
                                 close(in);
                                 exit(EXIT_FAILURE);
                         }
-
-                        fprintf(stderr, "%s", in_data);
                 }
 
                 /* Remove new line chars off the end of the string. */
@@ -257,7 +257,13 @@ void manage_connection(int in, int out)
                                  " when the case is randomly toggled are:"\
                                  "\n%s\n\nEnter next string: ",
                                  strlen(rand_buf), rand_buf);
-                write(out, out_buf, strlen(out_buf));
+
+                out_count = write(out, out_buf, strlen(out_buf));
+                if (out_count < 0)
+                {
+                        perror("While calling write()");
+                        exit(EXIT_FAILURE);
+                }
         }
 
         fprintf(stderr, "\n%s Client has exited the session. Closing down\n", prefix);

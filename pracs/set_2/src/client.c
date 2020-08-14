@@ -1,3 +1,13 @@
+/*
+ * Alex Griffiths - 18001525
+ *
+ * A connection oriented client.
+ *
+ * Compile: cc client.c -o client
+ *
+ * Usage: ./client Server Port
+ */
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -87,7 +97,7 @@ int main(int argc, char *argv[])
                 }
                 else if (in_count == 0) 
                 {
-                        fprintf(stderr, "Connection lost\n");
+                        fprintf(stderr, "Connection to server lost\n");
                         break;
                 }
 
@@ -97,8 +107,8 @@ int main(int argc, char *argv[])
                 while(1)
                 {
                         /* Check for connection loss */
-                        in_count = read(child_sd, server_res, BUF_LEN);
-                        if (in_count == 0) break;
+                        // in_count = read(child_sd, server_res, BUF_LEN);
+                        // if (in_count == 0) break;
 
                         fgets(client_str, BUF_LEN, stdin);
 
@@ -115,6 +125,7 @@ int main(int argc, char *argv[])
                         if (client_str[client_str_len - 2] == '&') break;
                 }
 
+                memset(server_res, '\0', BUF_LEN * sizeof(char));
 
                 /* Check for exit char */
                 if (client_str[0] == 'X') break;
