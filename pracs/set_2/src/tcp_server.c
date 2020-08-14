@@ -250,6 +250,7 @@ void manage_connection(int in, int out)
 
                 /* Remove new line chars off the end of the string. */
                 if (in_data[0] == 'X') break;
+                in_data[strlen(in_data) - 1] = '\0';
 
                 rand_count = server_processing(in_data, rand_buf);
 
@@ -257,7 +258,7 @@ void manage_connection(int in, int out)
                 sprintf(out_buf, "The server receieved %d characters, which"\
                                  " when the case is randomly toggled are:"\
                                  "\n%s\n\nEnter next string: ",
-                                 strlen(rand_buf), rand_buf);
+                                 (int)(strlen(rand_buf)), rand_buf);
 
                 out_count = write(out, out_buf, strlen(out_buf));
                 if (out_count < 0)
