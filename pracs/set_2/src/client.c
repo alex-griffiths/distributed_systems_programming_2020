@@ -86,8 +86,11 @@ int main(int argc, char *argv[])
         }
 
         /* Begin connection loop */
-        while(1)
+        while (1)
         {
+                /* Clear server res buffer */
+                memset(server_res, '\0', BUF_LEN * sizeof(char));
+
                 in_count = read(child_sd, server_res, BUF_LEN);
 
                 if (in_count < 0) 
@@ -104,12 +107,8 @@ int main(int argc, char *argv[])
                 fprintf(stderr, "%s\n", server_res);
 
                 /* Capture user input and send it to the server until eod found */
-                while(1)
+                while (1)
                 {
-                        /* Check for connection loss */
-                        // in_count = read(child_sd, server_res, BUF_LEN);
-                        // if (in_count == 0) break;
-
                         fgets(client_str, BUF_LEN, stdin);
 
                         client_str_len = strlen(client_str);
@@ -125,6 +124,7 @@ int main(int argc, char *argv[])
                         if (client_str[client_str_len - 2] == '&') break;
                 }
 
+                /* Clear server res buffer */
                 memset(server_res, '\0', BUF_LEN * sizeof(char));
 
                 /* Check for exit char */
