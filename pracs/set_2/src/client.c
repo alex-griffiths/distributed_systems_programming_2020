@@ -25,16 +25,16 @@
 
 int main(int argc, char *argv[])
 {
-        int child_sd; /* Child socket descriptor */
-        int con_val; /* Connection value */
-        struct sockaddr_in server; /* Server address structure */
+        int child_sd;                   /* Child socket descriptor       */
+        int con_val;                    /* Connection value              */
+        struct sockaddr_in server;      /* Server address structure      */
         struct hostent *server_host;
 
-        int server_len; /* size of server addr structure */
+        int server_len;                 /* size of server addr structure */
         int out_str_size;
 
-        short server_port; /* Server port num */
-        int out_count, in_count; /* Byte counts for send/receive */
+        short server_port;              /* Server port num               */
+        int out_count, in_count;        /* Byte counts for send/receive  */
         char client_str[BUF_LEN];
         int client_str_len;
         char server_res[BUF_LEN];
@@ -123,9 +123,6 @@ int main(int argc, char *argv[])
                         /* Check for eod character or for exit char */
                         if (client_str[client_str_len - 2] == '&') break;
                 }
-
-                /* Clear server res buffer */
-                memset(server_res, '\0', BUF_LEN * sizeof(char));
 
                 /* Check for exit char */
                 if (client_str[0] == 'X') break;

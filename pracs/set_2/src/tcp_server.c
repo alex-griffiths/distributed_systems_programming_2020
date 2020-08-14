@@ -128,9 +128,10 @@ int main()
                         exit(EXIT_FAILURE);
                 }
 
-                fprintf(stderr, "[ SERVER ] Accepted connection from %s on port %d. es_sd"\
-                                        " = %d\n",
-                                        client_details->h_name, ntohs(client.sin_port),
+                fprintf(stderr, "[ SERVER ] Accepted connection from %s"\
+                                        "on port %d. es_sd = %d\n",
+                                        client_details->h_name, 
+                                        ntohs(client.sin_port),
                                         es_sd);
 
                 /* Fork and handle incoming client */
