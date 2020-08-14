@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <time.h>
 
 #define TCP_PORT 1800
 
@@ -39,6 +40,9 @@ int main()
         struct hostent *client_details;
         struct sigaction child_sig;        /* used to handle SIGCHLD to prevent
                                               zombies */
+
+        /* Seed random number gen */
+        srand(time(NULL));
 
         fprintf(stderr, "[ SERVER ] THE SERVER IS STARTING...\n");
 
@@ -168,8 +172,8 @@ void manage_connection(int in, int out)
 
         char eod = '&'; /* termination char */
         int i;
-        int rev_cnt;
-        char rev_buf[BUF_LEN];
+        int rand_count;
+        char rand_buf[BUF_LEN]; /* Buffer to hold randomly case toggle chars */
 
         gethostname(hostname, 40);
         /* Output the process id for each child that is handling a connection */
@@ -192,9 +196,11 @@ void manage_connection(int in, int out)
         while(1)
         {
                 buf_count = 0;
+                /* Clear the buffer */
+                memset(in_data, '\0', BUF_LEN * sizeof(char));
                 while(1)
                 {
-                        read_count = read(in, in_data + buf_count, BUF_LEN);
+                        read_count = read(in, in_data + buf_count, COM_BUF_LEN);
                         if (read_count > 0)
                         {
                                 /* Handle buffer overflow */
@@ -219,11 +225,8 @@ void manage_connection(int in, int out)
                                                         in_data[i]);
                                 }
 
-                                // memcpy(&in_data[buf_count], in_data, read_count);
                                 buf_count = buf_count + read_count;
 
-                                // if (in_data[read_count - 3] == eod || in_data[0] == 'X') break;
-                                fprintf(stderr, "HERE");
                                 if (in_data[buf_count - 2] == eod) break;
                         }
                         else if (read_count == 0)
@@ -245,37 +248,45 @@ void manage_connection(int in, int out)
                 }
 
                 /* Remove new line chars off the end of the string. */
-                // fprintf(stderr, "%c", in_data[read_count - 3]);
-                in_data[read_count - 2] = '\0';
                 if (in_data[0] == 'X') break;
 
-                // rev_cnt = server_processing(in_data, rev_buf);
+                rand_count = server_processing(in_data, rand_buf);
 
                 /* Wait until eod is received before replying to client */
-                if (in_data[read_count - 3] == '&')
-                {
-                        sprintf(out_buf, "The server receieved %d characters, which"\
-                                         " when the case is toggled are: \n%s\n\nEnter"\
-                                         " next string: ",
-                                         strlen(rev_buf), rev_buf);
-                        write(out, out_buf, strlen(out_buf));
-                }
+                sprintf(out_buf, "The server receieved %d characters, which"\
+                                 " when the case is randomly toggled are:"\
+                                 "\n%s\n\nEnter next string: ",
+                                 strlen(rand_buf), rand_buf);
+                write(out, out_buf, strlen(out_buf));
         }
 
         fprintf(stderr, "\n%s Client has exited the session. Closing down\n", prefix);
+        sprintf(out_buf, "CONN_CLOSED");
+        memset(in_data, '\0', BUF_LEN * sizeof(char));
+        write(out, out_buf, strlen(out_buf));
         close(in);
 }
 
 int server_processing(char *in_str, char *out_str)
 {
         int i, len;
+        int r_num; /* Random number */
         char c;
 
         len = strlen(in_str);
 
         for(i = 0; i < len; i++)
         {
-                out_str[i] = toupper(in_str[i]);
+                r_num = rand();
+
+                if (r_num % 2 == 0)
+                {
+                        out_str[i] = toupper(in_str[i]);
+                }
+                else
+                {
+                        out_str[i] = tolower(in_str[i]);
+                }
         }
 
         out_str[len] = '\0';
