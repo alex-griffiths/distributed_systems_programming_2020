@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
         int client_str_len;
         char server_res[BUF_LEN];
         char *res_line;                 /* A line of a HTTP response */
-        char *http_ver;                 /* Which version of the HTTP protocol 
+        char http_ver;                 /* Which version of the HTTP protocol 
                                            we use*/
         int  stat_code;                 /* Response status code */
         int  line_len;                  /* Length of individual response lines*/
@@ -116,12 +116,11 @@ int main(int argc, char *argv[])
                 {
                         perror("While calling read()");
                         exit(EXIT_FAILURE);
-                        break;
                 }
 
                 res_line = strtok(server_res, "\r\n");
 
-                sscanf(res_line, "HTTP/1.%c %d", http_ver, &stat_code);
+                sscanf(res_line, "HTTP/1.%c %d", &http_ver, &stat_code);
 
                 while (res_line != NULL)
                 {
