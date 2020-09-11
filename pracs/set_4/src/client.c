@@ -39,8 +39,10 @@ int main(int argc, char *argv[])
         int client_str_len;
         char server_res[BUF_LEN];
         char *res_line;                 /* A line of a HTTP response */
-        char *line_word;                 /* A line of a HTTP response */
-        char *entity_field;             /* A field of the entity header or entity body */
+        char *http_ver;                 /* Which version of the HTTP protocol 
+                                           we use*/
+        int  stat_code;                 /* Response status code */
+        int  line_len;                  /* Length of individual response lines*/
 
         /* Check cli args */
         if (argc != 3)
@@ -89,15 +91,15 @@ int main(int argc, char *argv[])
         }
 
         /* Capture user input and send it to the server until eod found */
-        /*fgets(client_str, BUF_LEN, stdin);*/
+        fgets(client_str, BUF_LEN, stdin);
 
         client_str_len = strlen(client_str);
 
         /* Make sure we've got an extra new line to match the expected format. */
-        /*strncat(client_str, "\r\n", 2);*/
+        strncat(client_str, "\r\n", 2);
 
         /* Send request to server */
-        out_count = write(child_sd, "HEAD / HTTP/1.0\r\n\r\n", strlen("HEAD / HTTP/1.0\r\n\r\n"));
+        out_count = write(child_sd, client_str, strlen(client_str));
         if (out_count < 0)
         {
                 perror("While calling write()");
@@ -108,44 +110,61 @@ int main(int argc, char *argv[])
         memset(server_res, '\0', BUF_LEN * sizeof(char));
 
         /* Keep reading the response from the server until we reach the end. */
-        while(read(child_sd, server_res, BUF_LEN -1) != 0)
+        while((in_count = read(child_sd, server_res, BUF_LEN -1)) != 0)
         {
+                if (in_count < 0)
+                {
+                        perror("While calling read()");
+                        exit(EXIT_FAILURE);
+                        break;
+                }
+
                 res_line = strtok(server_res, "\r\n");
+
+                sscanf(res_line, "HTTP/1.%c %d", http_ver, &stat_code);
 
                 while (res_line != NULL)
                 {
-                        if (strstr(res_line, "HTTP/1."))
+                        /* Don't do these checks for a GET request. We don't
+                         * want to print these values twice
+                         */
+                        if (!strstr(client_str, "GET"))
                         {
-                                fprintf(stderr, "%s\n", res_line);
-                        }
-                        if (strstr(res_line, "Content-Type:"))
-                        {
-                                fprintf(stderr, "%s\n", res_line);
-                        }
-                        if (strstr(res_line, "Last-Modified"))
-                        {
-                                fprintf(stderr, "%s\n", res_line);
+                                /* Get response status */
+                                if (strstr(res_line, "HTTP/1."))
+                                {
+                                        fprintf(stderr, "%s\n", res_line);
+                                }
+
+
+                                /* Extract content-type */
+                                if (strstr(res_line, "Content-Type:"))
+                                {
+                                        fprintf(stderr, "%s\n", res_line);
+                                }
+
+                                /* Extract last-modified if it is there */
+                                if (strstr(res_line, "Last-Modified"))
+                                {
+                                        fprintf(stderr, "%s\n", res_line);
+                                }
+
+                        } else {
+                                /* Check the status code. If it's not a success, just print the
+                                 * status code and break
+                                 */
+                                if(stat_code != 200)
+                                {
+                                        fprintf(stderr, "%s\r\n", res_line);
+                                        break;
+                                }
+
+                                /* Print out the response to our GET request */
+                                fprintf(stdout, "%s\n", res_line);
                         }
 
                         res_line = strtok(NULL, "\r\n");
                 }
-                /*while (res_line != NULL)
-                {
-                        memset(line_word, '\0', sizeof(line_word));
-                        strcpy(line_word, res_line);
-                        line_word = strtok(line_word, " ");
-                        while(line_word != NULL) 
-                        {
-                                if (strcmp(line_word, "HTTP/1.0") == 0)
-                                {
-                                        fprintf(stderr, "%s\r\n", res_line);
-                                }
-
-                                line_word = strtok(NULL, " ");
-                        }
-
-                        res_line = strtok(NULL, "\r\n");
-                }*/
 
                 /* Clear server res buffer */
                 memset(server_res, '\0', BUF_LEN * sizeof(char));
