@@ -1,4 +1,4 @@
-/*
+Z3jZONGBIvssJ!/*
  * This client will send a string to a server process on the same machine or
  * a different host.
  *
