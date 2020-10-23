@@ -27,6 +27,7 @@
 void manage_connection(int, int);
 void manage_request(int, int);
 void response(char* verb, char* document, char* version, char* out_buf);
+void random_lines(char *poem_buffer, int num_lines);
 int server_processing(char *in_str, char *out_str);
 void handle_sig_child(int);
 
@@ -44,8 +45,6 @@ int main()
         struct sigaction child_sig;        /* used to handle SIGCHLD to prevent
                                               zombies */
 
-        /* Seed random number gen */
-        srand(time(NULL));
 
         fprintf(stderr, "[ SERVER ] THE SERVER IS STARTING...\n");
 
@@ -112,6 +111,7 @@ int main()
 
         while(1)
         {
+
                 client_len = sizeof(client);
                 if ((es_sd = accept(rs_sd, (struct sockaddr *) &client, 
                                                 (socklen_t *) &client_len)) < 0)
@@ -175,13 +175,15 @@ void manage_request(int in, int out)
         char prefix[100];
         char *req_word; /* A token from the HTTP request */
 
-        int i, token_counter;
-        int rand_count;
+        int token_counter;
         char rand_buf[BUF_LEN];
 
         char *verb;
         char *document;
         char *version;
+
+        /* Seed random number gen */
+        srand(time(NULL));
 
         gethostname(hostname, 40);
 
@@ -206,11 +208,21 @@ void manage_request(int in, int out)
         {
                 /* allococate memory for verb and then set it */
                 verb = (char *)malloc(sizeof(char) * 4);
+                if (verb == NULL) 
+                {
+                        perror("While calling malloc()");
+                        exit(EXIT_FAILURE);
+                }
                 sprintf(verb, "%s", "HEAD");
         } else if (in_data[0] == 'G') 
         {
                 /* allococate memory for verb and then set it */
                 verb = (char *)malloc(sizeof(char) * 3);
+                if (verb == NULL) 
+                {
+                        perror("While calling malloc()");
+                        exit(EXIT_FAILURE);
+                }
                 sprintf(verb, "%s", "GET");
         }
 
@@ -221,7 +233,6 @@ void manage_request(int in, int out)
 
         while (req_word != NULL)
         {
-
                 /* Check the request is for the document root */
                 if (token_counter == 1) 
                 {
@@ -231,6 +242,11 @@ void manage_request(int in, int out)
                         {
                                 sprintf(document, "%s", req_word);
                         }
+                        else
+                        {
+                                perror("While calling malloc()");
+                                exit(EXIT_FAILURE);
+                        }
                 } 
                 else if (token_counter == 2)
                 {
@@ -239,6 +255,11 @@ void manage_request(int in, int out)
                         if (version != NULL) 
                         {
                                 strncpy(version, req_word, 8);
+                        }
+                        else
+                        {
+                                perror("While calling malloc()");
+                                exit(EXIT_FAILURE);
                         }
                 } 
                 else if (token_counter > 2)
@@ -252,7 +273,6 @@ void manage_request(int in, int out)
 
         response(verb, document, version, out_buf);
 
-
         out_count = write(out, out_buf, strlen(out_buf));
         if (out_count < 0)
         {
@@ -265,13 +285,25 @@ void manage_request(int in, int out)
 }
 
 /* Creates a response to a request and writes it to out_buf. */
-void response(char *verb, char *document, char *version, char *out_buf) {
+void response(char *verb, char *document, char *version, char *out_buf) 
+{
+        char *poem_buffer;
+        char *cl_line; /* Content length line */
+        int num_lines;
+
         fprintf(stderr, "VERB: %s\r\n", verb);
         fprintf(stderr, "DOC: %s\r\n", document);
         fprintf(stderr, "VERSION: %s\r\n", version);
 
         /* Clear response buffer */
         memset(out_buf, '\0', BUF_LEN * sizeof(char));
+
+        /* Get random number of lines from poem */
+        num_lines = rand() % 51;
+
+        /* Aproximate the space required for the poem_buffer */
+        poem_buffer = (char *)malloc(sizeof(char) * 100 * num_lines);
+        random_lines(poem_buffer, num_lines);
 
         /* Make sure we're only handling HEAD and GET requests */
         if (strcmp(verb, "HEAD") == 0 || strcmp(verb, "GET") == 0) 
@@ -285,155 +317,105 @@ void response(char *verb, char *document, char *version, char *out_buf) {
 
                         /* Response headers */
                         /* Content-Type */
-                        strcat(out_buf, "Content-Type: text/html; charset=UTF-8\r\n");
+                        strcat(out_buf, "Content-Type: text/plain; charset=UTF-8\r\n");
 
                         /* Content-Length */
-                        strcat(out_buf, "Content-Length:18\r\n\r\n");
+                        sprintf(cl_line, "Content-Length:%d\r\n\r\n", 
+                                (int)strlen(poem_buffer));
+                        strcat(out_buf, cl_line);
 
                         if (strcmp(verb, "GET") == 0)
                         {
-                                /* Content-Length */
-                                strcat(out_buf, "This is a response");
+                                /* Message body */
+                                strcat(out_buf, poem_buffer);
                         }
 
                 } else {
                         /* Return 404 */
                         sprintf(out_buf, "%s 404 Not Found\r\n", version);
+                        /* Content-Type */
+                        strcat(out_buf, "Content-Type: text/plain; charset=UTF-8\r\n");
+                        /* Content-Length */
+                        strcat(out_buf, "Content-Length:0\r\n\r\n");
                 }
         } else {
                 /* Return 501 */
                 sprintf(out_buf, "%s 501 Not Implemented\r\n", version);
+                /* Content-Type */
+                strcat(out_buf, "Content-Type: text/plain; charset=UTF-8\r\n");
+                /* Content-Length */
+                strcat(out_buf, "Content-Length:0\r\n\r\n");
         }
 
         fprintf(stderr, "%s", out_buf);
 }
 
-void manage_connection(int in, int out)
+void random_lines(char *poem_buffer, int num_lines) 
 {
-        int read_count, buf_count, out_count;
-        char out_buf[BUF_LEN],
-             in_data[BUF_LEN],
-             hostname[40];
-        char prefix[100];
+        char *line_buffer;
+        char poem[] =   "Gay go up, and gay go down,\r\n"
+                        "To ring the bells of London town.\r\n"
+                        " \r\n"
+                        "Bull's eyes and targets,\r\n"
+                        "Say the bells of St. Margret's.\r\n"
+                        " \r\n"
+                        "Brickbats and tiles,\r\n"
+                        "Say the bells of St. Giles'.\r\n"
+                        " \r\n"
+                        "Halfpence and farthings,\r\n"
+                        "Say the bells of St. Martin's.\r\n"
+                        " \r\n"
+                        "Oranges and lemons,\r\n"
+                        "Say the bells of St. Clement's.\r\n"
+                        " \r\n"
+                        "Pancakes and fritters,\r\n"
+                        "Say the bells of St. Peter's.\r\n"
+                        " \r\n"
+                        "Two sticks and an apple,\r\n"
+                        "Say the bells at Whitechapel.\r\n"
+                        " \r\n"
+                        "Pokers and tongs,\r\n"
+                        "Say the bells at St. John's.\r\n"
+                        " \r\n"
+                        "Kettles and pans,\r\n"
+                        "Say the bells at St. Ann's.\r\n"
+                        " \r\n"
+                        "Old Father Baldpate,\r\n"
+                        "Say the slow bells at Aldgate.\r\n"
+                        " \r\n"
+                        "Maids in white Aprons\r\n"
+                        "Say the bells of St Catherine's.\r\n"
+                        " \r\n"
+                        "You owe me ten shillings,\r\n"
+                        "Say the bells of St. Helen's.\r\n"
+                        " \r\n"
+                        "When will you pay me?\r\n"
+                        "Say the bells at Old Bailey.\r\n"
+                        " \r\n"
+                        "When I grow rich,\r\n"
+                        "Say the bells at Shoreditch.\r\n"
+                        " \r\n"
+                        "Pray when will that be?\r\n"
+                        "Say the bells of Stepney.\r\n"
+                        " \r\n"
+                        "I'm sure I don't know,\r\n"
+                        "Says the great bell at Bow.\r\n"
+                        " \r\n"
+                        "Here comes a candle to light you to bed,\r\n"
+                        "And here comes a chopper to chop off your head.";
 
-        char eod = '&'; /* termination char */
-        int i;
-        int rand_count;
-        char rand_buf[BUF_LEN]; /* Buffer to hold randomly case toggle chars */
-
-        gethostname(hostname, 40);
-        /* Output the process id for each child that is handling a connection */
-        sprintf(prefix, "\t   Managing process [ %d ]:", getpid());
-        fprintf(stderr, "\n%s starting up\n", prefix);
-
-        /*
-         * Continue reading until eod is reached, or the buffer runs out.
-         *
-         * An ampersand is used as a termination character.
-         */
-
-        while(1)
+        /* split poem into lines. Copy the random number of lines into a buffer*/
+        line_buffer = strtok(poem, "\r\n");
+        while (line_buffer != NULL && num_lines > 0)
         {
-                buf_count = 0;
-                /* Clear the buffer */
-                memset(in_data, '\0', BUF_LEN * sizeof(char));
+                strcat(poem_buffer, line_buffer);
+                strcat(poem_buffer, "\r\n");
 
-                /* Read request from user */
-                read_count = read(in, in_data + buf_count, COM_BUF_LEN);
-
-                /*
-                while(1)
-                {
-                        if (read_count > 0)
-                        {
-                                if ((buf_count + read_count) > BUF_LEN)
-                                {
-                                         * Here we just return an error.
-                                         * normally we should split the buffer.
-
-                                        fprintf(stderr, "\n%s Buffer size exceeded",
-                                                        prefix);
-                                        close(in);
-                                        exit(EXIT_FAILURE);
-                                }
-                                
-                                /* Handle submitted buffer 
-                                fprintf(stderr, "%s Recieved:\n", prefix);
-                                for (i = buf_count; i < buf_count + read_count; i++)
-                                {
-                                        fprintf(stderr, "%s\t%c\n", prefix, 
-                                                        in_data[i]);
-                                }
-
-                                buf_count = buf_count + read_count;
-
-                                if (in_data[buf_count - 2] == eod) break;
-                                if (in_data[buf_count - 3] == eod) break;
-                        }
-                        else if (read_count == 0)
-                        {
-                                fprintf(stderr, "\n%s Client has closed connection. Closing.\n",
-                                                prefix);
-                                close(in);
-                                exit(EXIT_FAILURE);
-                        }
-                        else
-                        {
-                                sprintf(prefix, "%s: While reading from connection", prefix);
-                                perror(prefix);
-                                close(in);
-                                exit(EXIT_FAILURE);
-                        }
-                }*/
-
-                /* Remove new line chars off the end of the string. */
-                in_data[strlen(in_data) - 1] = '\0';
-
-
-                sprintf(out_buf, "The server receieved %d characters, which"\
-                                 " when the case is randomly toggled are:"\
-                                 "\n%s\n\nEnter next string: ",
-                                 (int)(strlen(rand_buf)), rand_buf);
-
-                out_count = write(out, out_buf, strlen(out_buf));
-                if (out_count < 0)
-                {
-                        perror("While calling write()");
-                        exit(EXIT_FAILURE);
-                }
+                num_lines--;
+                line_buffer = strtok(NULL, "\r\n");
         }
-
-        fprintf(stderr, "\n%s Client has exited the session. Closing down\n", prefix);
-
-        close(in);
 }
 
-int server_processing(char *in_str, char *out_str)
-{
-        int i, len;
-        int r_num; /* Random number */
-        char c;
-
-        len = strlen(in_str);
-
-        for(i = 0; i < len; i++)
-        {
-                r_num = rand();
-
-                if (r_num % 2 == 0)
-                {
-                        out_str[i] = toupper(in_str[i]);
-                }
-                else
-                {
-                        out_str[i] = tolower(in_str[i]);
-                }
-        }
-
-        out_str[len] = '\0';
-
-        return len;
-}
 
 void handle_sig_child(int sig_num)
 {
